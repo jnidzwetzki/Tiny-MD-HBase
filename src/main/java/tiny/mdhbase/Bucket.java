@@ -36,7 +36,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 /**
  * Bucket is a container of points. Each bucket is associated with a sub-space
  * organized by Index.
- * 
+ *
  * Schema:
  * <ul>
  * <li>row key: bitwise zip of {@link Point#x} and {@link Point#y}. ex.
@@ -45,9 +45,9 @@ import org.apache.hadoop.hbase.util.Bytes;
  * <li>column value: concatination of byte arrays of {@link Point#x} and
  * {@link Point#y}
  * </ul>
- * 
+ *
  * @author shoji
- * 
+ *
  */
 public class Bucket {
 
@@ -82,7 +82,7 @@ public class Bucket {
 
   /**
    * gets points at the query points
-   * 
+   *
    * @param row
    * @return
    * @throws IOException
@@ -99,7 +99,7 @@ public class Bucket {
 
   /**
    * scans this bucket and retrieves all points within the query region.
-   * 
+   *
    * @param rx
    *          a query range on dimension x
    * @param ry
@@ -109,14 +109,18 @@ public class Bucket {
    */
   public Collection<Point> scan(Range rx, Range ry) throws IOException {
     Scan scan = new Scan(startRow, stopRow);
-    Filter filter = new RangeFilter(rx, ry);
+    RangeFilter filter = new RangeFilter(rx, ry);
     scan.setFilter(filter);
     scan.setCaching(1000);
     ResultScanner scanner = dataTable.getScanner(scan);
     List<Point> results = new LinkedList<Point>();
+
     for (Result result : scanner) {
       transformResultAndAddToList(result, results);
     }
+
+    filter.printStatistics();
+
     return results;
   }
 
@@ -163,7 +167,7 @@ public class Bucket {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.lang.Object#toString()
    */
   @Override

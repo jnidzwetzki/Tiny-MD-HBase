@@ -1,12 +1,12 @@
 /*
  * Copyright 2012 Shoji Nishimura
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * @author shoji
- * 
+ *
  */
 public class RangeFilter extends FilterBase {
 
@@ -36,14 +36,20 @@ public class RangeFilter extends FilterBase {
   private Range rx;
   private Range ry;
 
+  private long readRecords;
+  private long forwardedRecords;
+
   public RangeFilter(Range rx, Range ry) {
     this.rx = rx;
     this.ry = ry;
+
+    this.readRecords = 0;
+    this.forwardedRecords = 0;
   }
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.apache.hadoop.io.Writable#readFields(java.io.DataInput)
    */
   @Override
@@ -59,7 +65,7 @@ public class RangeFilter extends FilterBase {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.apache.hadoop.io.Writable#write(java.io.DataOutput)
    */
   @Override
@@ -72,7 +78,7 @@ public class RangeFilter extends FilterBase {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see
    * org.apache.hadoop.hbase.filter.FilterBase#filterKeyValue(org.apache.hadoop
    * .hbase.KeyValue)
@@ -82,11 +88,28 @@ public class RangeFilter extends FilterBase {
     byte[] value = kv.getValue();
     int x = Bytes.toInt(value, 0);
     int y = Bytes.toInt(value, 4);
+
+    readRecords++;
+
     if (rx.include(x) && ry.include(y)) {
+    	forwardedRecords++;
       return ReturnCode.INCLUDE;
     } else {
       return ReturnCode.NEXT_ROW;
     }
+  }
+
+  public long getReadRecords() {
+	return readRecords;
+  }
+
+  public long getForwardedRecords() {
+	return forwardedRecords;
+  }
+
+  public void printStatistics() {
+	  System.out.format("Forwarded %d records of %d total read records%n",
+			  forwardedRecords, readRecords);
   }
 
 }
