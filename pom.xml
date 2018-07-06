@@ -43,9 +43,16 @@
       <artifactId>hadoop-core</artifactId>
       <version>0.20.205.0</version>
     </dependency>
+
     <dependency>
       <groupId>org.bboxdb</groupId>
       <artifactId>bboxdb-server</artifactId>
+      <version>0.8.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.bboxdb</groupId>
+      <artifactId>bboxdb-tools</artifactId>
       <version>0.8.1</version>
     </dependency>
 

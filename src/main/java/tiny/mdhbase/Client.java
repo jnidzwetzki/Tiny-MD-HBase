@@ -1,12 +1,12 @@
 /*
  * Copyright 2012 Shoji Nishimura
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -33,15 +33,20 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.bboxdb.commons.math.Hyperrectangle;
+import org.bboxdb.misc.BBoxDBException;
+import org.bboxdb.network.client.future.EmptyResultFuture;
+import org.bboxdb.tools.TupleFileReader;
+import org.bboxdb.tools.converter.tuple.TupleBuilderFactory.Name;
 
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
 
 /**
  * Tiny MD-HBase Client
- * 
+ *
  * @author shoji
- * 
+ *
  */
 public class Client implements Closeable {
 
@@ -65,7 +70,7 @@ public class Client implements Closeable {
   }
 
   /**
-   * 
+   *
    * @param rx
    *          a query range on dimension x
    * @param ry
@@ -83,7 +88,7 @@ public class Client implements Closeable {
   }
 
   /**
-   * 
+   *
    * @param point
    * @param k
    * @return
@@ -153,7 +158,7 @@ public class Client implements Closeable {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.io.Closeable#close()
    */
   @Override
@@ -162,7 +167,7 @@ public class Client implements Closeable {
   }
 
   /**
-   * 
+   *
    * @param args
    * @throws IOException
    */
@@ -222,12 +227,57 @@ public class Client implements Closeable {
         admin.disableTable("Sample");
         admin.deleteTable("Sample");
         admin.close();
+      } else if(args[0].equals("importgeojson")) {
+    	  importGeoJSONFile(args, client);
       } else {
         showHelp();
       }
     } finally {
       Closeables.closeQuietly(client);
     }
+  }
+
+  private static void importGeoJSONFile(String[] args, Client client) {
+	String filename = args[1];
+
+	final TupleFileReader tupleFile = new TupleFileReader(filename, Name.GEOJSON.toString());
+	tupleFile.addTupleListener(t -> {
+
+		if(t == null) {
+			System.err.println("Unable to parse line: " + tupleFile.getLastReadLine());
+			System.exit(-1);
+		}
+
+		long id = tupleFile.getProcessedLines();
+
+		if(id % 1000 == 0) {
+			System.out.format("Read %d lines%n", id);
+		}
+
+		Hyperrectangle boundingBox = t.getBoundingBox();
+
+		if(boundingBox.getDimension() != 2) {
+			System.err.println("Got wrong dimensionality: " + boundingBox);
+			System.exit(-1);
+		}
+
+		int x = (int) (boundingBox.getCoordinateHigh(0) * 100000.0);
+		int y = (int) (boundingBox.getCoordinateHigh(1) * 100000.0);
+
+		final Point point = new Point(id, x, y);
+
+		try {
+			client.insert(point);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	});
+
+	try {
+		tupleFile.processFile();
+	} catch(Exception e) {
+		e.printStackTrace();
+	}
   }
 
   private static void showHelp() {
